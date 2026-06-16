@@ -1,6 +1,8 @@
 package com.urlshortener.config;
 
 import com.urlshortener.security.JwtAuthenticationFilter;
+import com.urlshortener.security.RateLimitingFilter;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -16,9 +18,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
     
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RateLimitingFilter rateLimitingFilter;
 
-    SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,RateLimitingFilter rateLimitingFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.rateLimitingFilter = rateLimitingFilter;
     }
 
     @Bean
@@ -33,7 +37,8 @@ public class SecurityConfig {
         .authorizeHttpRequests(auth ->
             auth.requestMatchers("/api/auth/*").permitAll()
             .anyRequest().authenticated()
-        ).addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        ).addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+        .addFilterAfter(rateLimitingFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }
