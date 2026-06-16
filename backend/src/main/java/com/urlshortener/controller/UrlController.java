@@ -25,7 +25,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
 
 
 
@@ -51,17 +50,22 @@ public class UrlController {
 
     @GetMapping("/{shortCode}")
     public ResponseEntity<Void> redirect(@PathVariable @NotBlank String shortCode) {
-        Optional<Url> optUrl = urlService.incrementClickAndGet(shortCode);
-        Url url = optUrl.orElseThrow(()->
-         new ResponseStatusException(HttpStatus.NOT_FOUND,"Short URL not Found")); 
+        // Optional<Url> optUrl = urlService.incrementClickAndGet(shortCode);   
+        // Url url = optUrl.orElseThrow(()->
+        //  new ResponseStatusException(HttpStatus.NOT_FOUND,"Short URL not Found")); 
 
-        if (!url.isActive() || (url.getExpiresAt() != null && url.getExpiresAt().isBefore(Instant.now()))) {
-            throw new ResponseStatusException(HttpStatus.GONE, "Short URL expired or disabled");
-        }
+        // if (!url.isActive() || (url.getExpiresAt() != null && url.getExpiresAt().isBefore(Instant.now()))) {
+        //     throw new ResponseStatusException(HttpStatus.GONE, "Short URL expired or disabled");
+        // }
+        //   HttpHeaders headers = new HttpHeaders();
+        // headers.setLocation(URI.create(url.getOriginalUrl()));
+        // return new ResponseEntity<>(headers,HttpStatus.FOUND);
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setLocation(URI.create(url.getOriginalUrl()));
-        return new ResponseEntity<>(headers,HttpStatus.FOUND);
+          String originalUrl = urlService.resolveOriginalUrl(shortCode);
+          HttpHeaders headers = new HttpHeaders();
+            headers.setLocation(URI.create(originalUrl));
+            return new ResponseEntity<>(headers, HttpStatus.FOUND);
+      
     }
     
 }
