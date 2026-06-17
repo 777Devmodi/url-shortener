@@ -42,6 +42,9 @@ public class Url {
     @Builder.Default
     private boolean isActive = true;
 
+    @Column(length = 500)
+    private String tags;   // comma-separated categories
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {

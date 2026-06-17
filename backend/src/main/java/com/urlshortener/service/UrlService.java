@@ -1,5 +1,6 @@
 package com.urlshortener.service;
 
+import com.urlshortener.ai.GeminiService;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Optional;
@@ -17,14 +18,18 @@ import com.urlshortener.util.Base62Encoder;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class UrlService {
+    private final GeminiService geminiService;
     private final UrlRepository urlRepository;
     private static final SecureRandom RANDOM = new SecureRandom();
      private final RedirectCacheService redirectCacheService;
      private final ClickEventProducer clickEventProducer;
+
     
     @Transactional
     public Url shorten(String originalUrl , User user, Long ttlMinutes){
@@ -41,7 +46,17 @@ public class UrlService {
                     .createdAt(Instant.now())
                     .expiresAt(ttlMinutes != null ? Instant.now().plusMillis(ttlMinutes*60) : null)
                     .build();
-        return urlRepository.save(url);
+
+         Url savedUrl = urlRepository.save(url);
+    // Kick off asynchronous AI analysis
+            geminiService.analyzeUrl(originalUrl).thenAccept(analysis -> {
+                savedUrl.setTags(analysis.getCategory());
+                urlRepository.save(savedUrl);
+                log.info("URL {} tagged as {}", url.getShortCode(), analysis.getCategory());
+            });
+
+    return savedUrl;
+       
     }
 
     @Transactional(readOnly = true)
