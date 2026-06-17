@@ -7,6 +7,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.urlshortener.analytics.ClickEventProducer;
 import com.urlshortener.entity.Url;
 import com.urlshortener.entity.User;
 import com.urlshortener.exception.UrlExpiredException;
@@ -14,6 +15,7 @@ import com.urlshortener.exception.UrlNotFoundException;
 import com.urlshortener.repository.UrlRepository;
 import com.urlshortener.util.Base62Encoder;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -22,6 +24,7 @@ public class UrlService {
     private final UrlRepository urlRepository;
     private static final SecureRandom RANDOM = new SecureRandom();
      private final RedirectCacheService redirectCacheService;
+     private final ClickEventProducer clickEventProducer;
     
     @Transactional
     public Url shorten(String originalUrl , User user, Long ttlMinutes){
@@ -67,15 +70,17 @@ public class UrlService {
     }
 
     @Transactional
-    public String resolveOriginalUrl(String shortCode){
+    public String resolveOriginalUrl(String shortCode, HttpServletRequest request){
         // 1. Catch first
         String cachedUrl = redirectCacheService.getOriginalValue(shortCode);
         if (cachedUrl != null) {
             // Cache hit: still need to increment click count in the database
-            urlRepository.findByShortCode(shortCode).ifPresent(url -> {
-                url.setClickCount(url.getClickCount() + 1);
-                urlRepository.save(url);
-            });
+            // urlRepository.findByShortCode(shortCode).ifPresent(url -> {
+            //     url.setClickCount(url.getClickCount() + 1);
+            //     urlRepository.save(url);
+            // });
+            publishClickEvent(shortCode,request);
+            return cachedUrl;
         }
 
         // 2. Cache miss: fetch from database
@@ -86,13 +91,27 @@ public class UrlService {
             throw new UrlExpiredException("Short URL Expired or disbaled ");
         }
 
-        // 4. increment click count
-        url.setClickCount(url.getClickCount() + 1 );
-        urlRepository.save(url);
-
-        // 5. Store the original URL in cache
+        // Store in cache
         redirectCacheService.cacheUrl(shortCode, url.getOriginalUrl());
+
+        // async event 
+        publishClickEvent(shortCode,request);
+
+        // // 4. increment click count
+        // url.setClickCount(url.getClickCount() + 1 );
+        // urlRepository.save(url);
+
+        // // 5. Store the original URL in cache
+        // redirectCacheService.cacheUrl(shortCode, url.getOriginalUrl());
         return url.getOriginalUrl();
     }
-    
+
+    private void publishClickEvent(String shortCode, HttpServletRequest request) {
+    clickEventProducer.publishClickEvent(
+            shortCode,
+            request.getRemoteAddr(),
+            request.getHeader("User-Agent"),
+            request.getHeader("Referer")
+    );
+    }
 }

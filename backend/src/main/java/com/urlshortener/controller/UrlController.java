@@ -1,8 +1,6 @@
 package com.urlshortener.controller;
 
 import java.net.URI;
-import java.time.Instant;
-import java.util.Optional;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -11,13 +9,13 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 import com.urlshortener.dto.ShortenRequest;
 import com.urlshortener.entity.Url;
 import com.urlshortener.entity.User;
 import com.urlshortener.service.UrlService;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +46,7 @@ public class UrlController {
         return ResponseEntity.status(HttpStatus.CREATED).body(url);
     }
 
+    /*
     @GetMapping("/{shortCode}")
     public ResponseEntity<Void> redirect(@PathVariable @NotBlank String shortCode) {
         // Optional<Url> optUrl = urlService.incrementClickAndGet(shortCode);   
@@ -67,5 +66,14 @@ public class UrlController {
             return new ResponseEntity<>(headers, HttpStatus.FOUND);
       
     }
-    
+     */
+
+    @GetMapping("/{shortCode}")
+    public ResponseEntity<Void> redirect(@PathVariable @NotBlank String shortCode,
+                                        HttpServletRequest request) {
+        String originalUrl = urlService.resolveOriginalUrl(shortCode, request);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setLocation(URI.create(originalUrl));
+        return new ResponseEntity<>(headers, HttpStatus.FOUND);
+    }
 }
