@@ -19,10 +19,12 @@ public class SecurityConfig {
     
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final RateLimitingFilter rateLimitingFilter;
+    private final CorrelationIdFilter correlationIdFilter;
 
-    SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,RateLimitingFilter rateLimitingFilter) {
+    SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,RateLimitingFilter rateLimitingFilter,CorrelationIdFilter correlationIdFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.rateLimitingFilter = rateLimitingFilter;
+        this.correlationIdFilter=correlationIdFilter;
     }
 
     @Bean
@@ -38,6 +40,7 @@ public class SecurityConfig {
             auth.requestMatchers("/api/auth/*").permitAll()
             .anyRequest().authenticated()
         ).addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+        .addFilterBefore(correlationIdFilter, JwtAuthenticationFilter.class)
         .addFilterAfter(rateLimitingFilter, JwtAuthenticationFilter.class);
 
         return http.build();
